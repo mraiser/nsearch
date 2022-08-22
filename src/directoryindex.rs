@@ -14,22 +14,7 @@ use crate::hashmask::*;
 use crate::mime_type::mime_type;
 
 pub type FileFilter = fn(PathBuf) -> bool;
-
-pub struct Callback {
-  cb: Box<dyn FnMut(PathBuf)>,
-}
-
-impl Callback {
-  pub fn new(cb: impl FnMut(PathBuf) + 'static) -> Callback {
-    Callback {
-      cb: Box::new(cb),
-    }
-  }
-
-  pub fn exec(&mut self, path: PathBuf) {
-    (self.cb)(path);
-  }
-}
+pub type FileFound = dyn FnMut(PathBuf);
 
 const DIRNAME: &str = "8cee109e-8684-43a1-ada5-eca55e4ba55d";
 
@@ -185,20 +170,20 @@ impl DirectoryIndex {
     return changed
   }
   
-  pub fn search(&self, query: &str, v: &mut Callback, search_content: bool) {
+  pub fn search(&self, query: &str, v: &mut FileFound, search_content: bool) {
     let mut bitset = self.hash_mask.empty_bit_array();
     self.hash_mask.evaluate(&mut bitset, query);
     self.search_file(self.dir.to_owned(), self.work_dir.to_owned(), query, &mut bitset, v, search_content);
   }
   
   #[allow(dead_code)]
-  pub fn search_dir(&self, f: PathBuf, query: &str, v: &mut Callback, search_content: bool) {
+  pub fn search_dir(&self, f: PathBuf, query: &str, v: &mut FileFound, search_content: bool) {
     let mut bitset = self.hash_mask.empty_bit_array();
     self.hash_mask.evaluate(&mut bitset, query);
     self.search_file(f.to_owned(), self.get_work_file(f), query, &mut bitset, v, search_content);
   }
   
-  pub fn search_file(&self, f: PathBuf, w: PathBuf, query: &str, bs: &mut BitVec<u8>, v: &mut Callback, search_content: bool) {
+  pub fn search_file(&self, f: PathBuf, w: PathBuf, query: &str, bs: &mut BitVec<u8>, v: &mut FileFound, search_content: bool) {
     let m = metadata(&f).unwrap();
     let isdir = m.is_dir();
     let fname = f.file_name().unwrap().to_str().unwrap();
@@ -213,7 +198,7 @@ impl DirectoryIndex {
       i += 1;
     }
     if n == m {
-      v.exec(f.to_owned());
+      (v)(f.to_owned());
       if !isdir {
         return;
       }
@@ -263,7 +248,7 @@ impl DirectoryIndex {
               }
               
               if m == n {
-                v.exec(f);
+                (v)(f);
                 break;
               }
             }

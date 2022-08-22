@@ -43,9 +43,9 @@ fn main() {
   di.index(false);
 
   let x = "Found";
-  let found = move |path: PathBuf| -> () {
+  let mut found = move |path: PathBuf| -> () {
     println!("{}: {:?}", x, path);
   };
   
-  di.search("sapphire", &mut Callback::new(found), true);
+  di.search("sapphire", &mut found, true);
 }
